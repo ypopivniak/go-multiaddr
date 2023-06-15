@@ -34,6 +34,24 @@ type halfOpen interface {
 	CloseWrite() error
 }
 
+var (
+	netListen         = net.Listen
+	netListenPacket   = net.ListenPacket
+	netInterfaceAddrs = net.InterfaceAddrs
+)
+
+func RegisterNetListenFunc(f func(network, address string) (net.Listener, error)) {
+	netListen = f
+}
+
+func RegisterNetListenPacketFunc(f func(network, address string) (net.PacketConn, error)) {
+	netListenPacket = f
+}
+
+func RegisterInterfaceAddrsFunc(f func() ([]net.Addr, error)) {
+	netInterfaceAddrs = f
+}
+
 func wrap(nconn net.Conn, laddr, raddr ma.Multiaddr) Conn {
 	endpts := maEndpoints{
 		laddr: laddr,
@@ -288,7 +306,7 @@ func Listen(laddr ma.Multiaddr) (Listener, error) {
 		return nil, err
 	}
 
-	nl, err := net.Listen(lnet, lnaddr)
+	nl, err := netListen(lnet, lnaddr)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +380,7 @@ func ListenPacket(laddr ma.Multiaddr) (PacketConn, error) {
 		return nil, err
 	}
 
-	pc, err := net.ListenPacket(lnet, lnaddr)
+	pc, err := netListenPacket(lnet, lnaddr)
 	if err != nil {
 		return nil, err
 	}
@@ -387,7 +405,7 @@ func WrapPacketConn(pc net.PacketConn) (PacketConn, error) {
 
 // InterfaceMultiaddrs will return the addresses matching net.InterfaceAddrs
 func InterfaceMultiaddrs() ([]ma.Multiaddr, error) {
-	addrs, err := net.InterfaceAddrs()
+	addrs, err := netInterfaceAddrs()
 	if err != nil {
 		return nil, err
 	}
